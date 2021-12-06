@@ -30,3 +30,13 @@
 *.exe
 *.out
 *.app
+.vscode/
+*.vcxproj
+*.vcxproj.filters
+*.sln
+*.cmake
+CMakeCache.txt
+x64/
+wininet.dir/
+Release/
+CMakeFiles/
