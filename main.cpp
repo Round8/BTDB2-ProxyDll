@@ -16,8 +16,6 @@ Usage:
 #include <filesystem>
 #include <cstdint>
 
-
-
 //Used to ensure the functions required are properly exported
 #define EXPORT comment(linker, "/EXPORT:" __FUNCTION__ "=" __FUNCDNAME__)
 
@@ -26,53 +24,59 @@ HMODULE winINet;
 size_t(__stdcall* InternetGetConnectedState_orig)(size_t,int);
 
 extern "C" __declspec(dllexport) size_t __stdcall InternetGetConnectedState(size_t lpdwFlags, int dwReserved) {
-    int result = InternetGetConnectedState_orig(lpdwFlags, dwReserved);
-    return result;
+	int result = InternetGetConnectedState_orig(lpdwFlags, dwReserved);
+	return result;
 }
 
 auto initialize() -> int {
 	//Find the original wininet.dll
-    char sys32Path[MAX_PATH];
+	char sys32Path[MAX_PATH];
 
 	//We need to use diff dirs on diff platforms
 	#if INTPTR_MAX == INT64_MAX
-    SHGetFolderPathA(nullptr, CSIDL_SYSTEM, nullptr, SHGFP_TYPE_CURRENT, sys32Path);
+	SHGetFolderPathA(nullptr, CSIDL_SYSTEM, nullptr, SHGFP_TYPE_CURRENT, sys32Path);
 	#elif INTPTR_MAX == INT32_MAX
-    SHGetFolderPathA(nullptr, CSIDL_SYSTEMX86, nullptr, SHGFP_TYPE_CURRENT, sys32Path);
+	SHGetFolderPathA(nullptr, CSIDL_SYSTEMX86, nullptr, SHGFP_TYPE_CURRENT, sys32Path);
 	#else
 	#error Unknown pointer size or missing size macros!
 	#endif
 
-    std::string sys32Str(sys32Path);
-    std::string wininetPath = sys32Str + "\\wininet.dll";
+	std::string sys32Str(sys32Path);
+	std::string wininetPath = sys32Str + "\\wininet.dll";
 
 	
 	//Load the original wininet dll
-    winINet = LoadLibraryA(wininetPath.c_str());
+	winINet = LoadLibraryA(wininetPath.c_str());
 	//Get the original function to call when requested
-    InternetGetConnectedState_orig = (size_t(__stdcall*)(size_t,int))GetProcAddress(winINet, "InternetGetConnectedState");
+	InternetGetConnectedState_orig = (size_t(__stdcall*)(size_t,int))GetProcAddress(winINet, "InternetGetConnectedState");
 
-    //Load tweaker DLLs
-	std::string modsDir = "loaders/";
-	for(const auto& tweaker : std::filesystem::directory_iterator(modsDir)) {
-		LoadLibraryW(tweaker.path().c_str());
+	//Load tweaker DLLs
+	try {
+		std::string modsDir = "loaders/";
+		for(const auto& tweaker : std::filesystem::directory_iterator(modsDir)) {
+			LoadLibraryW(tweaker.path().c_str());
+		}
+	} catch(std::exception ex) {
+		MessageBoxA(nullptr, ex.what(), "Error (Missing 'loaders' folder?)", MB_OK);
+		exit(-1);
 	}
+	
 
-    return 0;
+	return 0;
 }
 
 
 extern "C" __declspec(dllexport) bool __stdcall DllMain(
-    HINSTANCE hinstDLL,  // handle to DLL module
-    DWORD fdwReason,     // reason for calling function
-    LPVOID lpReserved )  // reserved
+	HINSTANCE hinstDLL,  // handle to DLL module
+	DWORD fdwReason, // reason for calling function
+	LPVOID lpReserved )  // reserved
 {
-    // Perform actions based on the reason for calling.
-    switch( fdwReason ) 
-    { 
-        case DLL_PROCESS_ATTACH:
-            initialize();
-            break;
-    }
-    return TRUE;  // Successful DLL_PROCESS_ATTACH.
+// Perform actions based on the reason for calling.
+	switch( fdwReason ) 
+	{ 
+		case DLL_PROCESS_ATTACH:
+			initialize();
+			break;
+	}
+return TRUE;  // Successful DLL_PROCESS_ATTACH.
 }
